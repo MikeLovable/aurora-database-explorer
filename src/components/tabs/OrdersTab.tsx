@@ -64,7 +64,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ apiUrl, useLocalData, updateInvok
       let result: Customer[];
       
       if (useLocalData) {
-        // Fix: Pass undefined explicitly to getCustomerById to make it clear we're calling it with the optional parameter
+        // Pass undefined explicitly to getCustomerById to make it clear we're calling it with the optional parameter
         result = getCustomerById(undefined);
       } else if (apiUrl) {
         result = await fetchCustomers(apiUrl);
@@ -85,7 +85,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ apiUrl, useLocalData, updateInvok
       let result: Product[];
       
       if (useLocalData) {
-        // Fix: Pass undefined explicitly to getProductById to make it clear we're calling it with the optional parameter
+        // Pass undefined explicitly to getProductById to make it clear we're calling it with the optional parameter
         result = getProductById(undefined);
       } else if (apiUrl) {
         result = await fetchProducts(apiUrl);
@@ -111,7 +111,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ apiUrl, useLocalData, updateInvok
       if (selectedProductId) params.ProductID = selectedProductId;
       updateInvokedUrl('GetOrders', params);
     } else {
-      updateInvokedUrl('GetOrders');
+      updateInvokedUrl('GetOrders', {}); // Fix: Pass an empty object as the second parameter
     }
     
     try {
