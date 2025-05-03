@@ -1,0 +1,125 @@
+
+User: Build a 3-tier web application (called HelloDB) using React for a front end UI with AWS for the back end API layer and AWS for the back end database layer.
+
+The back end will be implemented with AWS CDK coded in typescript. Keep all the back code and project configurations in a "cdk" subdirectory, separate from the front end code and project files.
+
+composed of AWS API Gateway (called DataManagerAPI) and AWS Lambda (called DataManagerFunction), with data stored in a database that is provisioned and configured by a custom CDK construct called AuroraPGServerlessInitializedConstruct.
+
+Implement HelloDB starting with the deepest dependencies of the back end and moving forward to finish with the react front end UI. We will implement in this order:
+1.	DemoVPC – is an AWS VPC.
+2.	AuroraSV2DB is an AWS Aurora PostgreSQL Serverless V2 database.
+3.	DBUserAdmin, DBUserApp, DBUserCustomResource are AWS Secrets that hold credentials for accessing AuroraSV2DB.
+4.	AuroraPostgreSQLInitializerFunction is an AWS Lambda function coded in typescript to initialize a database by executing SQL files.
+5.	AuroraPostgreSQLInitializerCR is a lambda-backed (AuroraPostgreSQLInitializerFunction) AWS Custom Resource that can be reused in any stack.
+6.	AuroraPGServerlessInitializedConstruct is a CDK construct coded in typescript that can be re-used in any AWS stack to create and initialize a database. AuroraPGServerlessInitializedConstruct instantiates AuroraSV2DB, DBUserAdmin, DBUserApp, DBUserCustomResource, AuroraPostgreSQLInitializerFunction, and AuroraPostgreSQLInitializerCR.
+7.	DataManagerAPI is a lambda-backed AWS API Gateway with multiple resource paths.
+8.	DataManagerFunction is a AWS Lambda function coded in typescript that backs DataManagerAPI.
+9.	HelloStack - is an AWS CDK stack coded in typescript. HelloStack instantiates DemoVPC, AuroraPGServerlessInitializedConstruct, DataManagerAPI, DataManagerFunction.
+10.	HelloDB UI is a react app that allows a user to interact with data in AuroraSV2DB via DataManagerAPI.
+
+Now lets start implementing the detailed requirements in this order.
+
+AWS Custom Resources are described here is you need more info: ( https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-custom-resources.html)
+
+Implement AuroraPostgreSQLInitializerCR and AuroraPostgreSQLInitializerFunction as follows:
+•	The Create operation uses credentials from DBUserCustomResource to connect to the specified database and execute an array of SQL files passed in by the caller.
+•	Include ample logging so it is easy to identify and resolve errors that occur while AuroraPostgreSQLInitializerFunction is working, where the errors may include among other things: can't find path, can't find files, can't access database, database errors or SQL errors arising from the SQL files, etc.
+•	The Delete operation uses credentials from DBUserCustomResource to delete the specified database, even if it is not empty.
+
+Next implement AuroraPGServerlessInitializedConstruct as follows:
+1.	Has a properties type called AuroraPGServerlessInitializedConstructProps that exposes properties so any calling stack can control the important behaviors of the construct. Keep the definition of AuroraPGServerlessInitializedConstructProps in the same file as AuroraPGServerlessInitializedConstruct.
+2.	Has a property called SQLFiles that is a path to a subdirectory in the parent stack that can hold zero or more SQL files.
+3.	Has a property called DDLFiles, that is an array of names of zero or more files in the SQLFiles subdirectory which are intended to create tables and relationships.
+4.	Has a property called SeedDataFiles, that is an array of names of zero or more files in the SQLFiles subdirectory which are intended to populate initial seed data into the tables available after the DDLFiles are run.
+5.	Has a property called TestFiles, that is an array of names of zero or more files in the SQLFiles subdirectory which are intended to populate test data into the tables available after the DDLFiles are run.
+6.	Instantiates DBUserAdmin, DBUserApp, DBUserCustomResource.
+7.	Instantiates AuroraSV2DB with properties from AuroraPGServerlessInitializedConstructProps, including: DBName, AuroraPostgresEngineVersion (default to newest), AuroraCapacityUnit (default to cheapest).
+8.	Instantiates AuroraPostgreSQLInitializerCR and passes the array of SQL files. 
+9.	Has construct outputs that include: DBName, DB ARN, ARNs of the secrets, and any other attributes that will make it convenient for authorized callers to access the database.
+
+Implement DataManagerAPI as AWS API Gateway in CDK typescript infrastructure as code. DataManagerAPI should be invocable by any origin, and has the following paths:
+•	Path 1: "GetProducts" accepts one optional argument ("ProductID") a 5 character string that uniquely identifies a Product, and returns a JSON array of JSON objects representing up to 100 Products.
+•	Path 2: "GetCustomers" accepts one optional argument ("CustomerID") a 5 character string that uniquely identifies a Customer, and returns a JSON array of JSON objects representing up to 100 Customers.
+•	Path 3: "GetOrders" accepts 3 optional arguments ("CustomerID", "ProductID") and returns JSON arrays of JSON objects representing all Orders for up to 100 Customers.
+•	Path 4: "TransactOrder" accepts 2 required arguments ("CustomerID", "ProductID") and returns a code and message indicating failure or success.
+
+Implement DataManagerFunction as AWS Lambda in CDK typescript infrastructure as code with various handler functions so the same lambda can be used for all paths of DataManagerAPI. DataManagerFunction should further be implemented as follows:
+•	The code of DataManagerFunction should be typescript. 
+•	Make sure all DataManagerFunction paths that return a response to the API include headers that allow all origins and optional credentials.
+•	When DataManagerFunction handles an API request for the GetProducts API path, it returns the specified Product, or if no ProductID is specified returns all Products.
+•	When DataManagerFunction handles an API request for the GetCustomers API path, it returns the specified Customer, or if no CustomerID is specified returns all Customers.
+•	When DataManagerFunction handles an API request for the GetOrders API path, it returns all Orders filtered by matching CustomerID and or ProductID. 
+•	When DataManagerFunction handles an API request for the TransactOrder API path, it creates and inserts a new Order for CustomerID buying ProductID. It handles all expectable errors, such as unknown Customer and others.
+
+Next implement HelloStack coded in typescript and as follows:
+1.	Instantiates DemoVPC.
+2.	Instantiates the AuroraPGServerlessInitializedConstruct as follows:
+a.	Two generated SQL files for DDLFiles, each of which has DDL SQL to create three simple tables related to Customers, Orders, and Products with some simple columns and primary key and foreign key relationships.
+b.	Two generated SQL files for TestFiles, each of which populates the tables created in DDLFiles with a few dozen realistic rows per table.
+3.	Instantiates and configures DataManagerAPI and DataManagerFunction.
+4.	Has stack outputs that include attributes that will make it convenient for me see and use resources of the stack.
+5.	A "cdk deploy" of AuroraPGServerlessInitializedConstructTestStack should be able to do all of the following without any pipelines or further manual steps:
+a.	deploy the stack including AuroraPGServerlessInitializedConstruct
+b.	create tables in the database (via AuroraPostgreSQLInitializerCR)
+c.	populate the tables in the database (via AuroraPostgreSQLInitializerCR)
+
+Now let's work on the front end.
+
+Implement the HelloDB UI as a react app with 3 tabs and a top bar above the tabs that is common to all the tabs:
+
+Implement Top Bar with a text box and command button and static text label and toggle button
+•	the text box is called "BackendURL" and allows me to paste the base URL of DataManagerAPI after I deploy it in AWS.
+•	The command button is called "Accept" and accepts the backend URL.
+•	The static text label is called "InvokedURL" and shows the complete path of the URL that is invoked whenever the UI invokes the backend.
+•	the toggle button is called "LocalOrAPI" and allows the user to switch between local mocked functionality or DataManagerAPI functionality to find and display customers, products, and orders
+
+Each time the UI is about to call DataManagerAPI, update InvokedURL to show the full URL including path and parameters that will be invoked. If local mocked functionality is used instead of the API, populate InvokedURL with "LOCAL".
+
+Implement the 1st tab to Browse and search Customers. Show a table of results below the other controls on the tab.
+Implement the 2nd tab to Browse and search Products. Show a table of results below the other controls on the tab.
+Implement the 3rd tab to Browse and Transact Orders. This tab has a Drop Down for selecting a Customer and another Drop Down for selecting a Product, and a Command button to Transact the order.
+
+Knowledge:
+
+You seem to always ignore the "Knowledge" and have not ever implemented the "Knowledge" until I paste it manually into the chat. Explain why you are always ignoring the "Knowledge". Here is the "Knowledge" so you can include it in this build:
+
+If you're ever about to fail because you want to edit a file that you don't have permission to edit, don't fail, instead for every file that you want to edit but don't have permissions to edit, create a new file named XXXLOVABLEMANUAL where XXX is replaced by the name of the file you want to edit but can't. Then put the whole contents that you want into XXXLOVABLEMANUAL in the same directory as the original file. Then I will go and manually make the replacement because I have permission. Whenever you do this tell me in the chat which files and which paths I need to go and manually edit.
+
+Every time you make changes to code, also generate three files and save them and the topmost folder of the code:
+LOVABLEtranscript.txt is the full transcript to this point for the current project.
+LOVABLEOneShot.txt is your best version of a complete prompt that would generate the entire current version of the project in a one-shot prompt.
+LOVABLEIdealized.txt is your best and shortest version of a prompt that would generate the entire current version of the project in a one-shot prompt
+
+For all code you write, include ample comments to allow a beginning coder to understand what you are doing and why you are doing it. Also include ample logging so it is easy for me to find and fix errors.
+
+You frequently repeat the mistake where you put shebang on the second line. It is a universal requirement that the shebang must go on the first line. This is something you need to fix broadly and have it affect every future project and every other user. Shebang is never allowed on the second line.
+
+If you can run "cdk synth", please do and resolve all errors that arise.
+
+Avoid this common error when implementing the VPC: There are no 'Isolated' subnet groups in this VPC. Available types: Deprecated_Private_NAT,Private,Deprecated_Private,Public.
+Avoid this common error: npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+Avoid this common error: npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+
+Lovable (AI): Looking at your request for building the HelloDB application, I'm inspired by modern data management dashboards like AWS Console's database interfaces and Data Explorer tools. For this project, I'll create a sleek, functional interface with a professional color palette of navy blue, white, and complementary accent colors that evoke trust and technical sophistication.
+
+For this first version, I'll implement:
+
+1. A complete AWS CDK backend infrastructure with all the specified components:
+   - VPC, Aurora PostgreSQL Serverless V2, necessary security credentials
+   - Custom resources for database initialization
+   - API Gateway with Lambda function for data operations
+
+2. A responsive React frontend with:
+   - Navigation header with URL configuration
+   - Three functional tabs for Customers, Products, and Orders
+   - Data tables with search/filter functionality
+   - Order transaction capability
+   - Toggle between mock data and live API
+
+The UI will feature a clean, professional design with subtle animations for state transitions, using Tailwind CSS for styling with a focus on usability and clear information hierarchy.
+
+Let's start implementing this full-stack application, beginning with the AWS CDK infrastructure.
+
+First, I've implemented a responsive React frontend with tabs for Customers, Products, and Orders, a URL configuration interface, and mock data service for local testing. I've also created the AWS CDK infrastructure code with VPC, Aurora PostgreSQL database, Lambda functions, and API Gateway - all according to your requirements.
+
+You mentioned some "Knowledge" instructions that I should address. I understand the importance of creating XXXLOVABLEMANUAL files for any files I can't edit directly, and I'll be sure to generate the required LOVABLEtranscript.txt, LOVABLEOneShot.txt, and LOVABLEIdealized.txt files as requested. I've included ample comments throughout the codebase, and I've placed the shebang on the first line in the appropriate files. I've also structured the VPC to avoid the common errors you mentioned.

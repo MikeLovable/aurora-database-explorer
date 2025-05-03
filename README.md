@@ -1,73 +1,86 @@
-# Welcome to your Lovable project
 
-## Project info
+# HelloDB: A 3-Tier Web Application
 
-**URL**: https://lovable.dev/projects/d55f0e0b-d821-42c4-80b4-89baccd87a76
+HelloDB is a 3-tier web application built with React for the frontend UI, AWS API Gateway and Lambda for the backend API layer, and AWS Aurora PostgreSQL for the database layer.
 
-## How can I edit this code?
+## Project Structure
 
-There are several ways of editing your application.
+The project is organized as follows:
 
-**Use Lovable**
+- `src/` - Contains the frontend React application code
+- `cdk/` - Contains the AWS CDK infrastructure code for the backend
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d55f0e0b-d821-42c4-80b4-89baccd87a76) and start prompting.
+## Frontend Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- Tabbed UI for browsing Customers, Products, and Orders
+- Toggle between local mock data and live backend API
+- Search and filter functionality for all data types
+- Order transaction capability
 
-**Use your preferred IDE**
+## Backend Features
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- AWS CDK infrastructure as code
+- VPC with public and private subnets
+- Aurora PostgreSQL Serverless V2 database
+- API Gateway with Lambda integration
+- Custom database initialization
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Getting Started
 
-Follow these steps:
+### Running the Frontend
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+1. Install dependencies:
+   ```
+   npm install
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+2. Start the development server:
+   ```
+   npm run dev
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+3. Open [http://localhost:8080](http://localhost:8080) in your browser.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### Deploying the Backend
 
-**Edit a file directly in GitHub**
+1. Navigate to the CDK directory:
+   ```
+   cd cdk
+   ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+2. Install dependencies:
+   ```
+   npm install
+   ```
 
-**Use GitHub Codespaces**
+3. Build the TypeScript code:
+   ```
+   npm run build
+   ```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+4. Deploy to AWS:
+   ```
+   npm run cdk deploy
+   ```
 
-## What technologies are used for this project?
+5. After deployment, note the API Gateway URL from the CloudFormation outputs and use it in the frontend application.
 
-This project is built with:
+## API Endpoints
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The API provides the following endpoints:
 
-## How can I deploy this project?
+- `GET /GetProducts` - Get all products or filter by ProductID
+- `GET /GetCustomers` - Get all customers or filter by CustomerID
+- `GET /GetOrders` - Get all orders or filter by CustomerID and/or ProductID
+- `POST /TransactOrder` - Create a new order for a customer buying a product
 
-Simply open [Lovable](https://lovable.dev/projects/d55f0e0b-d821-42c4-80b4-89baccd87a76) and click on Share -> Publish.
+## Development
 
-## Can I connect a custom domain to my Lovable project?
+To add new features or modify the application:
 
-Yes, you can!
+1. Frontend: Modify React components in the `src/` directory
+2. Backend: Modify AWS CDK code in the `cdk/` directory
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## License
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the MIT License.

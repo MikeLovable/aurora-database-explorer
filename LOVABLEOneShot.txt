@@ -1,0 +1,58 @@
+
+Create a 3-tier web application called HelloDB using React for the frontend and AWS CDK with TypeScript for the backend infrastructure. The application should allow users to browse and manage customers, products, and orders stored in an AWS Aurora PostgreSQL Serverless V2 database.
+
+The project should have the following structure:
+1. Frontend: React application with a tabbed UI for customers, products, and orders
+2. Backend: AWS CDK infrastructure in a separate "cdk" directory
+
+Backend requirements:
+1. Create a custom CDK construct called AuroraPGServerlessInitializedConstruct that:
+   - Creates a VPC for networking
+   - Creates an Aurora PostgreSQL Serverless V2 database
+   - Manages database users via AWS Secrets Manager (admin, app, customresource)
+   - Initializes the database with SQL files (DDL, seed data, test data)
+   - Uses AWS Lambda-backed Custom Resources for database initialization
+
+2. Create DataManagerAPI (AWS API Gateway) with these endpoints:
+   - GetProducts: Returns products, optionally filtered by ProductID
+   - GetCustomers: Returns customers, optionally filtered by CustomerID
+   - GetOrders: Returns orders, filtered by CustomerID and/or ProductID
+   - TransactOrder: Creates a new order for a customer buying a product
+
+3. Create DataManagerFunction (AWS Lambda) to handle API requests with:
+   - TypeScript implementation
+   - CORS headers for all origins
+   - Error handling for all operations
+
+4. Implement HelloStack with:
+   - VPC creation
+   - Database with tables for customers, products, and orders
+   - API Gateway and Lambda integration
+   - Appropriate outputs for resource discovery
+
+Frontend requirements:
+1. Implement a top bar with:
+   - BackendURL text input and Accept button for API configuration
+   - InvokedURL display showing the current API path being called
+   - LocalOrAPI toggle to switch between mock data and live API
+
+2. Implement three tabs:
+   - Customers tab: Browse and search customers
+   - Products tab: Browse and search products
+   - Orders tab: Browse orders with filters, and create new orders
+
+3. Include mock data service for local development
+
+Additional requirements:
+- Make the UI responsive and user-friendly
+- Include proper error handling throughout
+- Provide logging for debugging purposes
+- Structure code for maintainability and reuse
+- Use best practices for AWS CDK and React development
+
+SQL schema should include:
+1. Customers table with fields: customer_id, name, email, phone, address
+2. Products table with fields: product_id, name, description, price, category
+3. Orders table with fields: order_id, customer_id, product_id, quantity, order_date
+
+Include realistic test data with at least 20 customers, 30 products, and 50 orders.

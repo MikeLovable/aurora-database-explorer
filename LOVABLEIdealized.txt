@@ -1,0 +1,2 @@
+
+Create a 3-tier HelloDB web app with React frontend and AWS CDK backend. Frontend has 3 tabs (Customers, Products, Orders) with search/view/transact functionality, toggle between local mock data and API, and configurable backend URL. Backend uses AWS CDK to create a VPC, Aurora PostgreSQL Serverless DB, Lambda function, and API Gateway with endpoints for getting/creating customers, products, and orders. Include a reusable DB initialization construct and sample data.
