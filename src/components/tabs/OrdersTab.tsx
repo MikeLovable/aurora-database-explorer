@@ -109,7 +109,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ apiUrl, useLocalData, updateInvok
       if (selectedProductId) params.ProductID = selectedProductId;
       updateInvokedUrl('GetOrders', params);
     } else {
-      updateInvokedUrl('GetOrders', {}); // Pass an empty object as the second parameter
+      updateInvokedUrl('GetOrders', {});
     }
     
     try {
