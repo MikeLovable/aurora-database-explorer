@@ -13,8 +13,8 @@ interface OrdersTabProps {
 }
 
 const OrdersTab: React.FC<OrdersTabProps> = ({ apiUrl, useLocalData, updateInvokedUrl }) => {
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('all');
+  const [selectedProductId, setSelectedProductId] = useState<string>('all');
   
   const { customers, products, orders, loading, loadOrders } = useOrdersData({
     apiUrl,
@@ -30,7 +30,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ apiUrl, useLocalData, updateInvok
   };
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-xl">Orders Management</CardTitle>
       </CardHeader>

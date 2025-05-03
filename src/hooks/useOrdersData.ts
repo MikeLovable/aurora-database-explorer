@@ -30,15 +30,17 @@ export const useOrdersData = ({
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Load all customers and products on hook mount
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       await Promise.all([
         loadCustomers(),
         loadProducts()
       ]);
+      setLoading(false);
     };
     
     loadData();
@@ -93,11 +95,14 @@ export const useOrdersData = ({
   const loadOrders = async () => {
     setLoading(true);
     
+    const effectiveCustomerId = selectedCustomerId === 'all' ? '' : selectedCustomerId;
+    const effectiveProductId = selectedProductId === 'all' ? '' : selectedProductId;
+    
     // Only update invoked URL if we have a customer or product ID selected
-    if (selectedCustomerId || selectedProductId) {
+    if (effectiveCustomerId || effectiveProductId) {
       const params: Record<string, string> = {};
-      if (selectedCustomerId) params.CustomerID = selectedCustomerId;
-      if (selectedProductId) params.ProductID = selectedProductId;
+      if (effectiveCustomerId) params.CustomerID = effectiveCustomerId;
+      if (effectiveProductId) params.ProductID = effectiveProductId;
       updateInvokedUrl('GetOrders', params);
     } else {
       updateInvokedUrl('GetOrders', {});
@@ -107,9 +112,9 @@ export const useOrdersData = ({
       let result: Order[];
       
       if (useLocalData) {
-        result = getOrdersByFilters(selectedCustomerId, selectedProductId);
+        result = getOrdersByFilters(effectiveCustomerId, effectiveProductId);
       } else if (apiUrl) {
-        result = await fetchOrders(apiUrl, selectedCustomerId, selectedProductId);
+        result = await fetchOrders(apiUrl, effectiveCustomerId, effectiveProductId);
       } else {
         result = [];
       }

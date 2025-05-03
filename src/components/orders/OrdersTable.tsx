@@ -42,7 +42,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
               <SelectValue placeholder="Filter by Customer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Customers</SelectItem>
+              <SelectItem value="all">All Customers</SelectItem>
               {customers.map(customer => (
                 <SelectItem key={customer.CustomerID} value={customer.CustomerID}>
                   {customer.Name} ({customer.CustomerID})
@@ -58,7 +58,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
               <SelectValue placeholder="Filter by Product" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Products</SelectItem>
+              <SelectItem value="all">All Products</SelectItem>
               {products.map(product => (
                 <SelectItem key={product.ProductID} value={product.ProductID}>
                   {product.Name} ({product.ProductID})
