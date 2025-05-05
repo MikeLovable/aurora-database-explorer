@@ -8,6 +8,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as cr from 'aws-cdk-lib/custom-resources';
+import * as fs from 'fs';
 
 interface AuroraPGServerlessInitializedConstructProps {
   vpc: ec2.IVpc;
@@ -61,25 +62,18 @@ export class AuroraPGServerlessInitializedConstruct extends Construct {
     });
 
     // Create Aurora PostgreSQL cluster with Serverless V2
-    // Using DatabaseCluster with serverless v2 configuration instead of ServerlessCluster
     this.cluster = new rds.DatabaseCluster(this, 'Database', {
       engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_15_4
+        version: rds.AuroraPostgresEngineVersion.VER_15_3 // Updated to valid version
       }),
       defaultDatabaseName: props.databaseName,
-      instanceProps: {
-        vpc: props.vpc,
-        vpcSubnets: {
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
-        },
-        securityGroups: [dbSecurityGroup],
-        instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.BURSTABLE4_GRAVITON,
-          ec2.InstanceSize.MEDIUM
-        ),
-      },
       credentials: rds.Credentials.fromSecret(this.adminSecret),
-      // Configure as Serverless v2
+      vpc: props.vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+      },
+      securityGroups: [dbSecurityGroup],
+      // Configure as Serverless v2 using the recommended pattern
       serverlessV2MinCapacity: 0.5,
       serverlessV2MaxCapacity: 2.0,
       writer: rds.ClusterInstance.serverlessV2('writer'),
@@ -122,19 +116,22 @@ export class AuroraPGServerlessInitializedConstruct extends Construct {
       onEventHandler: dbInitFunction
     });
 
+    // Read SQL files content
+    const sqlScripts = props.sqlScriptPaths.map(scriptPath => {
+      try {
+        return { path: scriptPath, content: fs.readFileSync(scriptPath, 'utf8') };
+      } catch (e) {
+        return { path: scriptPath, error: `Failed to read file: ${e}` };
+      }
+    });
+
     // Create custom resource for database initialization
     const customResource = new cdk.CustomResource(this, 'DatabaseInitialization', {
       serviceToken: provider.serviceToken,
       properties: {
         // Force execution on every deployment by including a random value
         random: Math.random().toString(),
-        sqlScripts: props.sqlScriptPaths.map(scriptPath => {
-          try {
-            return { path: scriptPath, content: cdk.Fn.readFileSync(scriptPath) };
-          } catch (e) {
-            return { path: scriptPath, error: `Failed to read file: ${e}` };
-          }
-        })
+        sqlScripts: sqlScripts
       }
     });
   }
