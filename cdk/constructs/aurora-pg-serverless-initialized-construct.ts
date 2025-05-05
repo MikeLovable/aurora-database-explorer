@@ -16,7 +16,7 @@ interface AuroraPGServerlessInitializedConstructProps {
 }
 
 export class AuroraPGServerlessInitializedConstruct extends Construct {
-  public readonly cluster: rds.ServerlessCluster;
+  public readonly cluster: rds.DatabaseCluster;
   public readonly adminSecret: secretsmanager.ISecret;
   public readonly appUserSecret: secretsmanager.ISecret;
   public readonly customResourceSecret: secretsmanager.ISecret;
@@ -60,21 +60,35 @@ export class AuroraPGServerlessInitializedConstruct extends Construct {
       description: 'Security group for Aurora PostgreSQL database'
     });
 
-    // Create Aurora Serverless cluster
-    this.cluster = new rds.ServerlessCluster(this, 'Database', {
+    // Create Aurora PostgreSQL cluster with Serverless V2
+    // Using DatabaseCluster with serverless v2 configuration instead of ServerlessCluster
+    this.cluster = new rds.DatabaseCluster(this, 'Database', {
       engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_14_6
+        version: rds.AuroraPostgresEngineVersion.VER_15_4
       }),
       defaultDatabaseName: props.databaseName,
-      enableDataApi: true,
-      vpc: props.vpc,
-      securityGroups: [dbSecurityGroup],
+      instanceProps: {
+        vpc: props.vpc,
+        vpcSubnets: {
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+        },
+        securityGroups: [dbSecurityGroup],
+        instanceType: ec2.InstanceType.of(
+          ec2.InstanceClass.BURSTABLE4_GRAVITON,
+          ec2.InstanceSize.MEDIUM
+        ),
+      },
       credentials: rds.Credentials.fromSecret(this.adminSecret),
-      scaling: {
-        autoPause: cdk.Duration.minutes(10),
-        minCapacity: rds.AuroraCapacityUnit.ACU_2,
-        maxCapacity: rds.AuroraCapacityUnit.ACU_8
-      }
+      // Configure as Serverless v2
+      serverlessV2MinCapacity: 0.5,
+      serverlessV2MaxCapacity: 2.0,
+      writer: rds.ClusterInstance.serverlessV2('writer'),
+      readers: [
+        rds.ClusterInstance.serverlessV2('reader1', {
+          scaleWithWriter: true,
+        }),
+      ],
+      deletionProtection: false,
     });
 
     // Create Lambda function for database initialization
@@ -85,7 +99,8 @@ export class AuroraPGServerlessInitializedConstruct extends Construct {
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       environment: {
-        CLUSTER_ARN: this.cluster.clusterArn,
+        CLUSTER_ENDPOINT: this.cluster.clusterEndpoint.hostname,
+        CLUSTER_PORT: this.cluster.clusterEndpoint.port.toString(),
         DB_NAME: props.databaseName,
         ADMIN_SECRET_ARN: this.adminSecret.secretArn,
         APP_SECRET_ARN: this.appUserSecret.secretArn,
@@ -94,8 +109,8 @@ export class AuroraPGServerlessInitializedConstruct extends Construct {
       timeout: cdk.Duration.minutes(5)
     });
 
-    // Grant Data API access to the initializer function
-    this.cluster.grantDataApiAccess(dbInitFunction);
+    // Allow the function to connect to the DB
+    this.cluster.connections.allowFrom(dbInitFunction, ec2.Port.tcp(this.cluster.clusterEndpoint.port));
 
     // Grant access to Secrets Manager
     this.adminSecret.grantRead(dbInitFunction);
@@ -124,9 +139,25 @@ export class AuroraPGServerlessInitializedConstruct extends Construct {
     });
   }
 
-  // Grant Data API access to the provided principal
+  // Grant database access to the provided principal
   public grantDataApiAccess(grantee: iam.IGrantable) {
-    this.cluster.grantDataApiAccess(grantee);
+    // For standard Aurora clusters (not Data API), grant read to the secrets
     this.appUserSecret.grantRead(grantee);
+    
+    // Add additional permissions for DB access through standard connection methods
+    // since we're not using the Data API anymore
+    if (grantee instanceof iam.Role) {
+      this.cluster.connections.allowFrom(
+        new ec2.Connections({
+          securityGroups: [
+            new ec2.SecurityGroup(this, `${grantee.node.id}SG`, {
+              vpc: this.cluster.vpc,
+              allowAllOutbound: true,
+            }),
+          ],
+        }),
+        ec2.Port.tcp(this.cluster.clusterEndpoint.port)
+      );
+    }
   }
 }

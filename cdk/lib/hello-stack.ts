@@ -38,12 +38,14 @@ export class HelloStack extends cdk.Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       environment: {
         DB_SECRET_ARN: aurora.appUserSecret.secretArn,
+        DB_CLUSTER_ENDPOINT: aurora.cluster.clusterEndpoint.hostname,
+        DB_CLUSTER_PORT: aurora.cluster.clusterEndpoint.port.toString(),
         DB_NAME: 'hellodb'
       },
       timeout: cdk.Duration.seconds(30)
     });
 
-    // Allow the Lambda to access the database secret
+    // Grant database access to the Lambda function
     aurora.grantDataApiAccess(dataManagerFunction);
 
     // Create API Gateway
@@ -92,6 +94,11 @@ export class HelloStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'DatabaseSecretArn', {
       description: 'Database credentials secret ARN',
       value: aurora.appUserSecret.secretArn
+    });
+
+    new cdk.CfnOutput(this, 'DatabaseEndpoint', {
+      description: 'Database cluster endpoint',
+      value: aurora.cluster.clusterEndpoint.hostname
     });
   }
 }
